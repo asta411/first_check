@@ -24,7 +24,7 @@ campagne<- read_excel("campagne.xlsx", col_names = TRUE)
 chambre<- read_excel("chambre.xlsx", col_names = TRUE)
 
 summary(sejour)
-head(sejour)
+
 
 
 
@@ -40,21 +40,30 @@ png("Patient_Age_Distribution.png")
 hist(sejour$PATAGE, main = "Distribution of Patient Ages", xlab = "Age of Patients", col = "skyblue", border = "black")
 dev.off()
 
-# Replace FAUX with 0 and VRAI with 1
-result_pos <- resultat %>%
-  mutate(across(c(RESKP, RESECC, RESECO, RESPSA, RESACB), ~ ifelse(. == "VRAI", 1, 0)))
 
-# Sum all the positive cases for each bacteria
-positive_sums <- colSums(result_pos[, c("RESKP", "RESECC", "RESECO", "RESPSA", "RESACB")])
+# Transforming campagne into long format to have jsut column of ID and column of encensement and the appareil that is considered in the study
 
-# Create a histogram of the summed positive cases
-barplot(
-  positive_sums,
-  main = "Positive Cases for Each Bacteria",
-  xlab = "Bacteria",
-  ylab = "Number of Positive Cases",
-  col = "skyblue",
-  border = "black"
-)
+campagne_long <- campagne %>%
+  # Reshape ENV* columns into APP groups
+  pivot_longer(
+    cols = matches("^ENV"), 
+    names_to = c("APP", ".value"),
+    names_pattern = "ENV(PEC|PRA|PEL|PLE)(C|E)"
+  ) %>%
+  # Rename columns and format APP
+  rename(CODE = C, ENC = E) %>%
+  mutate(
+    APP = case_when(
+      APP == "PEC" ~ 1L,
+      APP == "PRA" ~ 2L,
+      APP == "PEL" ~ 3L,
+      APP == "PLE" ~ 4L,
+      TRUE ~ NA_integer_
+    )
+  ) %>%
+  # Select and order final columns
+  select(CAMID, CAMNUM, CAMDAT, CAMSEC, APP, CODE, ENC)
 
-#pb tout est à zero mais c pas forcement pertinent ce que je fais donc changer 
+# Remove rows with missing CODE/ENC if needed
+campagne_long <- campagne_long %>% filter(!is.na(APP))
+
