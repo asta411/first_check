@@ -315,3 +315,32 @@ ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
       vjust = 1                     # Alignement vertical
     )
   ) 
+
+#Essai résumé statistique des données en utilisant gtsummary :
+
+infection_flamboyant_filtered <- infection_flamboyant %>%
+  select(
+    SUBJID,          # Identifiant patient
+    INFIBR_IC,       # Infection vs Colonisation
+    INFKP,           # Klebsiella pneumoniae
+    INFECC,          # Enterobacter cloacae
+    INFECO           # Escherichia coli
+  )
+
+#we use tbl_summary from gt_summary :
+tbl_infection <- infection_flamboyant_filtered %>%
+  tbl_summary(
+    by = INFIBR_IC,  # Comparer Infection vs Colonisation
+    include = c(INFKP, INFECC, INFECO),
+    label = list(
+      INFKP ~ "Klebsiella pneumoniae",
+      INFECC ~ "Enterobacter cloacae",
+      INFECO ~ "Escherichia coli"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "no"
+  ) %>%
+  add_p() %>%  # Ajouter les tests statistiques
+  modify_header(label ~ "**Bactérie**") %>%
+  bold_labels()
+tbl_infection
