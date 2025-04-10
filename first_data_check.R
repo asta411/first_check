@@ -316,7 +316,7 @@ ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
     )
   ) 
 
-#Essai résumé statistique des données en utilisant gtsummary :
+#Essai résumé statistique d'infection en utilisant gtsummary (secteur flamboyant):
 
 infection_flamboyant_filtered <- infection_flamboyant %>%
   select(
@@ -344,3 +344,51 @@ tbl_infection <- infection_flamboyant_filtered %>%
   modify_header(label ~ "**Bactérie**") %>%
   bold_labels()
 tbl_infection
+
+tbl_strains_kp <- infection_flamboyant %>%
+  tbl_summary(
+    by = INFIBR_IC,  # Comparer Strains de Infection vs Colonisation
+    include = c(INFKPST),
+    label = list(
+      INFKPST ~ "Strains Klebsiella pneumoniae"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "ifany"
+  ) %>%
+  modify_header(label ~ "**Souches**") %>%
+  bold_labels()
+
+tbl_strains_kp
+
+tbl_strains_entero <- infection_flamboyant %>%
+  tbl_summary(
+    by = INFIBR_IC,  # Comparer Strains de Infection vs Colonisation
+    include = c(INFECCST),
+    label = list(
+      INFECCST ~ "Enterobacter cloacae"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "ifany"
+  ) %>%
+  #modify_header(label ~ "**Souches**") %>%
+  bold_labels()
+
+tbl_strains_entero
+
+tbl_strains_ec <- infection_flamboyant %>%
+  tbl_summary(
+    by = INFIBR_IC,  # Comparer Strains de Infection vs Colonisation
+    include = c(INFECOST),
+    label = list(
+      INFECOST ~ "Escherichia Coli"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "ifany"
+  ) %>%
+  #modify_header(label ~ "**Souches**") %>%
+  bold_labels()
+
+tbl_strains_ec
+
+#Essai résumé statistique de colonisation en utilisant gtsummary (secteur flamboyant):
+
