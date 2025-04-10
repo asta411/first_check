@@ -392,3 +392,76 @@ tbl_strains_ec
 
 #Essai résumé statistique de colonisation en utilisant gtsummary (secteur flamboyant):
 
+colonisation_flamboyant_filtered <- colonisation_flamboyant %>%
+  select(
+    SUBJID,          # Identifiant patient
+    COLRES,          # Résultat test colonisation
+    COLKP,           # Klebsiella pneumoniae
+    COLECC,          # Enterobacter cloacae
+    COLECO           # Escherichia coli
+  )
+
+tbl_colonisation <- colonisation_flamboyant_filtered %>%
+  tbl_summary(
+    by = COLRES,  # Comparer Infection vs Colonisation
+    include = c(COLKP, COLECC, COLECO),
+    label = list(
+      COLKP ~ "Klebsiella pneumoniae",
+      COLECC ~ "Enterobacter cloacae",
+      COLECO ~ "Escherichia coli"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "no"
+  ) %>%
+  #add_p() %>%  # Ajouter les tests statistiques
+  #modify_header(label ~ "**Bactérie**") %>%
+  bold_labels()
+tbl_colonisation
+
+
+tbl_col_ec <- colonisation_flamboyant %>%
+  tbl_summary(
+    by = COLRES,  # Comparer Strains de Infection vs Colonisation
+    include = c(COLECOST),
+    label = list(
+      COLECOST ~ "Escherichia Coli"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "ifany"
+  ) %>%
+  #modify_header(label ~ "**Souches**") %>%
+  bold_labels()
+
+tbl_col_ec
+
+tbl_col_kp <- colonisation_flamboyant %>%
+  tbl_summary(
+    by = COLRES,  # Comparer Strains de Infection vs Colonisation
+    include = c(COLKPST),
+    label = list(
+      COLKPST ~ "Strains Klebsiella pneumoniae"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "ifany"
+  ) %>%
+  modify_header(label ~ "**Souches**") %>%
+  bold_labels()
+
+tbl_col_kp
+
+tbl_col_entero <- colonisation_flamboyant %>%
+  tbl_summary(
+    by = COLRES,  # Comparer Strains de Infection vs Colonisation
+    include = c(COLECCST),
+    label = list(
+      COLECCST ~ "Enterobacter cloacae"
+    ),
+    statistic = list(all_categorical() ~ "{n} ({p}%)"),
+    missing = "ifany"
+  ) %>%
+  #modify_header(label ~ "**Souches**") %>%
+  bold_labels()
+
+tbl_col_entero
+
+
