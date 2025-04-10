@@ -464,4 +464,51 @@ tbl_col_entero <- colonisation_flamboyant %>%
 
 tbl_col_entero
 
+#checking the number of blse beds each day in the sector Flamboyant
+
+rea_data_flamboyant <- rea_data %>%
+  filter(secteur=="FLAMBOYANT")
+
+colonisation_events <- colonisation_flamboyant %>%
+  mutate(COLDAT = as.Date(COLDAT)) %>%
+  select(COLDAT) %>%
+  rename(event_date = COLDAT) %>%
+  mutate(event_type = "colonisation")
+
+infection_events <- infection_flamboyant %>%
+  mutate(INFDAT = as.Date(INFDAT)) %>%
+  select(INFDAT) %>%
+  rename(event_date = INFDAT) %>%
+  mutate(event_type = "infection")
+
+all_events <- bind_rows(colonisation_events, infection_events) %>%
+  arrange(event_date)
+
+event_counts <- all_events %>%
+  group_by(event_date) %>%
+  summarise(
+    total_events = n(),
+    nb_colonisations = sum(event_type == "colonisation"),
+    nb_infections = sum(event_type == "infection")
+  )
+
+# 4. Jointure avec les données de lits
+validation_df <- rea_data_flamboyant %>%
+  mutate(date = as.Date(date)) %>%
+  left_join(event_counts, by = c("date" = "event_date")) %>%
+  mutate(
+    total_events = replace_na(total_events, 0),
+    beds_match = nb_lit_blse == total_events,
+    discrepancy = nb_lit_blse - total_events
+  )
+
+# 5.Résultats concordance: seul 12 jour ou ça correspond c bizarre
+cat("Jours avec discordance :", sum(!validation_df$beds_match), "/", nrow(validation_df), "\n")
+cat("Erreur moyenne :", mean(abs(validation_df$discrepancy)), "lits/jour\n")
+
+#Liste des dates ou une infection positive ou plus a été relevée:
+infection_events_unique <- infection_events%>%
+  distinct(event_date) %>%
+  arrange(event_date)
+
 
