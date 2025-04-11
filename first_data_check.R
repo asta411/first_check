@@ -1,5 +1,8 @@
+#Visualization of the data: sejour,colonisation,infection,campagne,chambre,resultat,resultat_autre,TraPRea-Data_Service-Fin
+
 
 rm(list = ls())
+#Libraries--------------
 library(MASS)
 library(tidyverse)
 library(readxl)
@@ -17,9 +20,12 @@ library(ggplot2)
 library(lubridate)
 library(dplyr)
 
-colonisation <- read_delim("COLONISATION.txt", delim = "#", col_names = TRUE)
-infection <- read_delim("INFECTION.txt", delim = "#", col_names = TRUE)
-sejour <- read_delim("SEJOUR.txt", delim = "#", col_names = TRUE)
+
+
+# Load data---------------------------------------------------------------------
+colonisation <- read.table("COLONISATION.txt", sep = "#", header = TRUE, encoding = "latin1", comment.char = "")
+infection <- read.table("INFECTION.txt", sep = "#", header = TRUE, encoding = "latin1", comment.char = "")
+sejour <- read.table("SEJOUR.txt", sep = "#", header = TRUE, encoding = "latin1", comment.char = "")
 
 
 resultat <- read_excel("resultat.xlsx", col_names = TRUE)
@@ -33,6 +39,7 @@ summary(sejour)
 
 
 
+# Distribution of patient ages----------------------------------------------------------
 hist(sejour$PATAGE, 
      main = "Distribution of Patient Ages", 
      xlab = "Age of Patients", 
@@ -46,7 +53,8 @@ hist(sejour$PATAGE, main = "Distribution of Patient Ages", xlab = "Age of Patien
 dev.off()
 
 
-# Transforming campagne into long format to have jsut column of ID and column of encensement and the appareil that is considered in the study
+
+# Transforming campagne into long format-----------------------------------------------------
 #prise en compte de la colomne encensement seulement pas la premiere
 campagne_long <- campagne %>%
   # Reshape ENV* columns into APP groups
@@ -59,11 +67,11 @@ campagne_long <- campagne %>%
   rename(CODE = C, ENC = E) %>%
   mutate(
     APP = case_when(
-      APP == "PEC" ~ 1L,
-      APP == "PRA" ~ 2L,
-      APP == "PEL" ~ 3L,
-      APP == "PLE" ~ 4L,
-      TRUE ~ NA_integer_
+      APP == "PEC" ~ "Echographe",
+      APP == "PRA" ~ "",
+      APP == "PEL" ~ "",
+      APP == "PLE" ~ "",
+      .default = NA
     )
   ) %>%
   # Select and order final columns
@@ -72,7 +80,7 @@ campagne_long <- campagne %>%
 # Remove rows with missing CODE/ENC if needed
 campagne_long <- campagne_long %>% filter(!is.na(APP))
 
-#transforming chambre into long format
+#transforming chambre into long format--------------------------------------
 
 chambre_long <- chambre %>%
 mutate(across(matches("ENV.*E"), as.character) #Non fait converti en NA et pas gardé tel quel 
@@ -102,7 +110,8 @@ mutate(across(matches("ENV.*E"), as.character) #Non fait converti en NA et pas g
 chambre_long <- chambre_long %>% filter(!is.na(APP))
 
 
-#Graphe de la durée de séjour de chaque patient de l'étude à l'hopital
+
+#Durée de séjour de chaque patient de l'étude à l'hopital-----------------------------------------
 
 sejour <- read_delim("SEJOUR.txt", delim = "#", col_names = TRUE)
 
@@ -136,7 +145,7 @@ ggplot(
     name = "Durée (jours)"
   ) +
     theme_minimal(base_size = 12)
-#reprise du code:graphe secteur Flamboyant avec prise ou non d'antibiotiques 
+#Graphe secteur Flamboyant avec prise ou non d'antibiotiques ---------------
 
 # Filtrer les patients du secteur Flamboyant
 sejour <- read_delim("SEJOUR.txt", delim = "#", col_names = TRUE)
@@ -204,7 +213,7 @@ ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
     plot.title.position = "plot"
   )
   
-#Ajout données de colonisation (seulement pour le secteur flamboyant)
+#Graphe avec les données de colonisations fécales et d'infections bactériologiques (seulement les résultats positifs et pour le secteur flamboyant)-------------
 
 # Filtrer les prélèvements rectaux positifs pour les patients de Flamboyant
 colonisation_flamboyant <- colonisation %>%
@@ -305,18 +314,17 @@ ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
     plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
     legend.position = "right",
     legend.key.size = unit(1, "cm"),
-    legend.text = element_text(size = 10)
-  )
-+
-  theme(
+    legend.text = element_text(size = 10),
     axis.text.x = element_text(
       angle = 45,                   # Rotation à 45 degrés
-      hjust = 1,                    # Alignement horizontal
+      #hjust = 1,                    # Alignement horizontal
       vjust = 1                     # Alignement vertical
     )
   ) 
 
-#Essai résumé statistique d'infection en utilisant gtsummary (secteur flamboyant):
+
+
+#Tableau résumé des bactéries productrices de blse trouvées chez les patients lors de l'investigation de l'infection bactériologique----------------
 
 infection_flamboyant_filtered <- infection_flamboyant %>%
   select(
@@ -344,7 +352,14 @@ tbl_infection <- infection_flamboyant_filtered %>%
   modify_header(label ~ "**Bactérie**") %>%
   bold_labels()
 tbl_infection
+#commentaire : 
+# Le résumé statistiques de tbl_infection ne concerne que les epèces productrices de blse 
+# retrouvées chez les patients lors de l'investigation bactériologiques sur l'ensemble des résultats
+# positifs lors de cette investigation sur chaque patient, ne sont pas considérés les autres infections 
+# bactériologiques, les infections virologiques et les infections parasito-mycologiques.
 
+
+#Tableau résumé des souches de Klebsiella pneumoniae retrouvées lors de l'investigation aux infections bactériologiques------------------
 tbl_strains_kp <- infection_flamboyant %>%
   tbl_summary(
     by = INFIBR_IC,  # Comparer Strains de Infection vs Colonisation
@@ -359,6 +374,8 @@ tbl_strains_kp <- infection_flamboyant %>%
   bold_labels()
 
 tbl_strains_kp
+
+#Tableau résumé des souches d'Enterobacter cloacae retrouvées lors de l'investigation aux infections bactériologiques------------------
 
 tbl_strains_entero <- infection_flamboyant %>%
   tbl_summary(
@@ -375,6 +392,8 @@ tbl_strains_entero <- infection_flamboyant %>%
 
 tbl_strains_entero
 
+
+#Tableau résumé des souches de Escherichia coli retrouvées lors de l'investigation aux infections bactériologiques------------------
 tbl_strains_ec <- infection_flamboyant %>%
   tbl_summary(
     by = INFIBR_IC,  # Comparer Strains de Infection vs Colonisation
@@ -390,7 +409,7 @@ tbl_strains_ec <- infection_flamboyant %>%
 
 tbl_strains_ec
 
-#Essai résumé statistique de colonisation en utilisant gtsummary (secteur flamboyant):
+#Tableau résumé statistique des données de colonisation (secteur flamboyant):--------------------
 
 colonisation_flamboyant_filtered <- colonisation_flamboyant %>%
   select(
@@ -403,7 +422,7 @@ colonisation_flamboyant_filtered <- colonisation_flamboyant %>%
 
 tbl_colonisation <- colonisation_flamboyant_filtered %>%
   tbl_summary(
-    by = COLRES,  # Comparer Infection vs Colonisation
+    by = COLRES, 
     include = c(COLKP, COLECC, COLECO),
     label = list(
       COLKP ~ "Klebsiella pneumoniae",
@@ -417,8 +436,11 @@ tbl_colonisation <- colonisation_flamboyant_filtered %>%
   #modify_header(label ~ "**Bactérie**") %>%
   bold_labels()
 tbl_colonisation
+#commentaire :
+#85% des tests donnent une colonisation du patient par Klebsiella pneumoniae.
 
 
+#Tableau différentes souches de Escherichia coli trouvées lors de l'investigation colonisation fécale----------------
 tbl_col_ec <- colonisation_flamboyant %>%
   tbl_summary(
     by = COLRES,  # Comparer Strains de Infection vs Colonisation
@@ -434,6 +456,7 @@ tbl_col_ec <- colonisation_flamboyant %>%
 
 tbl_col_ec
 
+#Tableau différentes souches de Klebsiella pneumoniae trouvées lors de l'investigation colonisation fécale----------------
 tbl_col_kp <- colonisation_flamboyant %>%
   tbl_summary(
     by = COLRES,  # Comparer Strains de Infection vs Colonisation
@@ -449,6 +472,7 @@ tbl_col_kp <- colonisation_flamboyant %>%
 
 tbl_col_kp
 
+#Tableau différentes souches de Enterobacter cloacae trouvées lors de l'investigation colonisation fécale----------------
 tbl_col_entero <- colonisation_flamboyant %>%
   tbl_summary(
     by = COLRES,  # Comparer Strains de Infection vs Colonisation
@@ -464,7 +488,8 @@ tbl_col_entero <- colonisation_flamboyant %>%
 
 tbl_col_entero
 
-#checking the number of blse beds each day in the sector Flamboyant
+
+#Checking the number of blse beds each day in the sector Flamboyant--------------
 
 rea_data_flamboyant <- rea_data %>%
   filter(secteur=="FLAMBOYANT")
@@ -510,5 +535,160 @@ cat("Erreur moyenne :", mean(abs(validation_df$discrepancy)), "lits/jour\n")
 infection_events_unique <- infection_events%>%
   distinct(event_date) %>%
   arrange(event_date)
+
+
+
+
+#Graphe avec les données d'infections bactériologiques : 
+#(Sexe du patient,durée de séjour du patient, prise d'antibiotiques, résultats positifs ou négatifs, )-------------------
+#commentaire: focus plus tard sur une espèce Klebsiella Pneumoniae.
+
+# Filtrer les prélèvements rectaux positifs pour les patients de Flamboyant
+#commentaire : col_flamb : résultats négatifs de l'investigation colonisation fécale pour tous les patients du secteur Flamboyant
+
+col_flamb_neg <- colonisation %>%
+  filter(
+    SUBJID %in% sejour_flamboyant$SUBJID,
+    COLRES=="Négatif"
+  ) %>%
+  mutate(COLDAT = dmy(COLDAT)) %>%
+  left_join(sejour_flamboyant %>% select(SUBJID, REAENT, FINDAT), by = "SUBJID") %>%
+  filter(COLDAT >= REAENT & COLDAT <= FINDAT)
+
+# Filtrer les prélèvements bactériologiques positifs pour les patients de Flamboyant
+infection <- read_delim("INFECTION.txt", delim = "#", col_names = TRUE)
+inf_flamb_neg <- infection %>%
+  filter(
+    SUBJID %in% sejour_flamboyant$SUBJID,
+    INFIBR=="Négatif"
+  ) %>%
+  mutate(INFDAT = dmy(INFDAT)) %>%
+  left_join(sejour_flamboyant %>% select(SUBJID, REAENT, FINDAT), by = "SUBJID") %>%
+  filter(INFDAT >= REAENT & INFDAT <= FINDAT)
+#commentaire : inf_flamb : résultats négatifs de l'investigation infection bactériologiques pour tous les patients du secteur Flamboyant
+
+
+# Calcul de la date maximale APRÈS le filtrage
+max_date <- max(sejour_flamboyant$FINDAT, na.rm = TRUE) + days(7)
+
+ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
+  # Barre à gauche avec les identifiants des patients
+  geom_text(
+    aes(x = min(REAENT), label = SUBJID),
+    hjust = 1, size = 3, color = "black"
+  ) +
+  # Lignes de durée de séjour
+  geom_linerange(
+    aes(xmin = REAENT, xmax = FINDAT, color = PATSEX),
+    linewidth = 1.
+  ) +
+  scale_color_manual(
+    name = "Sexe",
+    values = c(
+      "Masculin" = "orange",  # Bleu
+      "Feminin" = "darkturquoise")    # Orange
+  )+
+  # Infections bactériologiques négatives
+  geom_point(
+    data = inf_flamb_neg,
+    aes(x = INFDAT, shape = "Infection bactériologique négative"),
+    color = "red", size = 3
+  ) +
+  # Infections bactériologiques positives
+  geom_point(
+    data = infection_flamboyant,
+    aes(x = INFDAT, shape = "Infection bactériologique positive"),
+    color = "black", size = 3
+  ) +
+  # # Antibiotiques
+  # geom_point(
+  #   aes(
+  #     x = max_date,
+  #     shape = ifelse(ATB == "Oui", "Antibiotiques", "Pas d'antibiotiques")
+  #   ),
+  #   size = 3
+  # ) +
+  # Barre verticale pour antibiotiques à droite
+  geom_tile(
+    aes(
+      x = max_date + days(10), 
+      width = 3,  # Largeur de la barre
+      fill = ifelse(ATB == "Oui", "Antibiotiques", "Pas d'antibiotiques")
+    ),
+    height = 0.5  # Hauteur relative pour chaque patient
+  ) +
+  
+  # Échelle de dates avec espace pour la barre
+  scale_x_date(
+    date_breaks = "1 week",
+    date_labels = "%d %b",
+    limits = c(
+      min(sejour_flamboyant$REAENT, na.rm = TRUE), 
+      max_date + days(15)  # +15 jours pour la barre
+    )
+  ) +
+  
+  # Couleurs et remplissages
+  scale_fill_manual(
+    name = "Antibiotiques",
+    values = c("Antibiotiques" = "#1F77B4", "Pas d'antibiotiques" = "#FF7F0E")
+  ) +
+  
+  # # Échelle de dates
+  # scale_x_date(
+  #   date_breaks = "1 week",
+  #   date_labels = "%d %b",
+  #   limits = c(min(sejour_flamboyant$REAENT, na.rm = TRUE)-days(10), max_date + days(10)),
+  #   expand = expansion(add = c(1, 12))
+  # ) +
+  
+  # Échelle de formes unifiée
+  scale_shape_manual(
+    name = "Événements",
+    values = c(
+      "Infection bactériologique négative" = 4,
+      "Infection bactériologique positive" = 20,
+      "Antibiotiques" = 16,
+      "Pas d'antibiotiques" = 1
+    ),
+    breaks=c("Antibiotiques", "Pas d'antibiotiques",
+             "Infection bactériologique positive", 
+             "Infection bactériologique négative"),
+    labels = c("Antibiotiques", "Pas d'antibiotiques",
+               "Infection bactériologique positive", 
+               "Infection bactériologique négative")
+  ) +
+  
+  # Labels et thème
+  labs(
+    title = "Durée de séjour - Secteur Flamboyant",
+    subtitle = "Avec événements cliniques et traitements antibiotiques",
+    x = "Date",
+    y = "Patients (triés par date d'entrée)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    axis.text.y = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    legend.position = "right",
+    legend.key.size = unit(1, "cm"),
+    legend.text = element_text(size = 10),
+    axis.text.x = element_text(
+      angle = 45,                   # Rotation à 45 degrés
+      #hjust = 1,                    # Alignement horizontal
+      vjust = 1                     # Alignement vertical
+    )
+  ) 
+
+
+
+#Gros tableau résumé statistiques sur les données de sejour et de colonisation et d'infection par Entero, Ec et K-P par secteur---------------- 
+
+
+
+
+
+
 
 
