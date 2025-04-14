@@ -688,6 +688,24 @@ all_events <- bind_rows(
 
 #Gros tableau résumé statistiques sur les données de sejour et de colonisation et d'infection par Entero, Ec et K-P par secteur---------------- 
 
+sejour <- sejour %>%
+  mutate(Duree=as.numeric(sejour$FINDAT - sejour$HOSENT))
 
-
-
+tableau <- sejour %>%
+  select(REASEC1, PATAGE, PATSEX, Duree, ATB) %>%
+  tbl_summary(
+    by = REASEC1,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    )
+  ) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "oneway.test",
+      all_categorical() ~ "fisher.test"
+    ),
+    test.args = all_continuous() ~ list(var.equal = TRUE)
+  ) %>%
+  modify_caption("**Tableau 1. Analyse par secteur**")
+tableau
