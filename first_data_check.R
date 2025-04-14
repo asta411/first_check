@@ -555,8 +555,15 @@ col_flamb_neg <- colonisation %>%
   left_join(sejour_flamboyant %>% select(SUBJID, REAENT, FINDAT), by = "SUBJID") %>%
   filter(COLDAT >= REAENT & COLDAT <= FINDAT)
 
+
 # Filtrer les prélèvements bactériologiques positifs pour les patients de Flamboyant
-infection <- read_delim("INFECTION.txt", delim = "#", col_names = TRUE)
+
+infection <- read.table("INFECTION.txt", sep = "#", header = TRUE, encoding = "latin1", comment.char = "")
+infection <- infection %>%
+  mutate(
+    INFIBR_IC=ifelse(INFIBR_IC=="INFECTION","Infection",INFIBR_IC)
+  )
+
 inf_flamb_neg <- infection %>%
   filter(
     SUBJID %in% sejour_flamboyant$SUBJID,
@@ -571,123 +578,112 @@ inf_flamb_neg <- infection %>%
 # Calcul de la date maximale APRÈS le filtrage
 max_date <- max(sejour_flamboyant$FINDAT, na.rm = TRUE) + days(7)
 
+#graphe sur le secteur flamboyant----------------
+#probleme d'affichage des legendes a corriger
 ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
-  # Barre à gauche avec les identifiants des patients
-  geom_text(
-    aes(x = min(REAENT), label = SUBJID),
-    hjust = 1, size = 3, color = "black"
-  ) +
+  # Barre à gauche avec les ID patients
+  # geom_text(
+  #   aes(x = min(REAENT), label = SUBJID),
+  #   hjust = 1.1, 
+  #   size = 3, 
+  #   color = "black"
+  # ) +
+  
   # Lignes de durée de séjour
   geom_linerange(
     aes(xmin = REAENT, xmax = FINDAT, color = PATSEX),
-    linewidth = 1.
+    linewidth = 1.5
   ) +
-  scale_color_manual(
-    name = "Sexe",
-    values = c(
-      "Masculin" = "orange",  # Bleu
-      "Feminin" = "darkturquoise")    # Orange
-  )+
-  # Infections bactériologiques négatives
+  
+  # Infections bactériologiques
   geom_point(
     data = inf_flamb_neg,
     aes(x = INFDAT, shape = "Infection bactériologique négative"),
-    color = "red", size = 3
+    color = "red", 
+    size = 3
   ) +
-  # Infections bactériologiques positives
   geom_point(
     data = infection_flamboyant,
     aes(x = INFDAT, shape = "Infection bactériologique positive"),
-    color = "black", size = 3
-  ) +
-  # # Antibiotiques
-  # geom_point(
-  #   aes(
-  #     x = max_date,
-  #     shape = ifelse(ATB == "Oui", "Antibiotiques", "Pas d'antibiotiques")
-  #   ),
-  #   size = 3
-  # ) +
-  # Barre verticale pour antibiotiques à droite
-  geom_tile(
-    aes(
-      x = max_date + days(10), 
-      width = 3,  # Largeur de la barre
-      fill = ifelse(ATB == "Oui", "Antibiotiques", "Pas d'antibiotiques")
-    ),
-    height = 0.5  # Hauteur relative pour chaque patient
+    color = "black", 
+    size = 3
   ) +
   
-  # Échelle de dates avec espace pour la barre
+  # Barre antibiotiques à droite
+  geom_tile(
+    aes(
+      x = max_date + days(7),  # Position ajustée
+      width = 3,               # Largeur augmentée
+      fill = ifelse(ATB == "Oui", "Antibiotiques", "Pas d'antibiotiques")
+    ),
+    height = 0.8,              # Hauteur ajustée
+    show.legend = TRUE
+  ) +
+  
+  # Échelles
   scale_x_date(
     date_breaks = "1 week",
     date_labels = "%d %b",
     limits = c(
-      min(sejour_flamboyant$REAENT, na.rm = TRUE), 
-      max_date + days(15)  # +15 jours pour la barre
-    )
+      min(sejour_flamboyant$REAENT, na.rm = TRUE) - days(5),
+      max_date + days(15)  # Espace supplémentaire à droite
+    ),
+    expand = expansion(add = c(0, 3))  # Réduction de l'expansion
   ) +
-  
-  # Couleurs et remplissages
+  scale_color_manual(
+    name = "Sexe",
+    values = c("Masculin" = "orange", "Feminin" = "darkturquoise"),
+    labels=c("Masculin","Feminin")
+  ) +
   scale_fill_manual(
     name = "Antibiotiques",
-    values = c("Antibiotiques" = "#1F77B4", "Pas d'antibiotiques" = "#FF7F0E")
+    values = c("Antibiotiques" = "#1F77B4", "Pas d'antibiotiques" = "#FF7F0E"),
+    labels = c("Oui", "Non")
   ) +
-  
-  # # Échelle de dates
-  # scale_x_date(
-  #   date_breaks = "1 week",
-  #   date_labels = "%d %b",
-  #   limits = c(min(sejour_flamboyant$REAENT, na.rm = TRUE)-days(10), max_date + days(10)),
-  #   expand = expansion(add = c(1, 12))
-  # ) +
-  
-  # Échelle de formes unifiée
   scale_shape_manual(
-    name = "Événements",
+    name = "Résultats",
     values = c(
       "Infection bactériologique négative" = 4,
-      "Infection bactériologique positive" = 20,
-      "Antibiotiques" = 16,
-      "Pas d'antibiotiques" = 1
+      "Infection bactériologique positive" = 20
     ),
-    breaks=c("Antibiotiques", "Pas d'antibiotiques",
-             "Infection bactériologique positive", 
-             "Infection bactériologique négative"),
-    labels = c("Antibiotiques", "Pas d'antibiotiques",
-               "Infection bactériologique positive", 
-               "Infection bactériologique négative")
+    labels=c("Infection bactériologique négative",
+             "Infection bactériologique positive")
   ) +
   
-  # Labels et thème
+  # Thème
   labs(
-    title = "Durée de séjour - Secteur Flamboyant",
-    subtitle = "Avec événements cliniques et traitements antibiotiques",
+    title = "Suivi des patients - Secteur Flamboyant",
+    subtitle = "Durée de séjour avec événements cliniques et traitement antibiotique",
     x = "Date",
-    y = "Patients (triés par date d'entrée)"
+    y = "Patients"
   ) +
   theme_minimal(base_size = 12) +
   theme(
     panel.grid.major.y = element_blank(),
-    axis.text.y = element_blank(),
-    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    #axis.text.y = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.margin = margin(r = 50, l = 50),
     legend.position = "right",
-    legend.key.size = unit(1, "cm"),
-    legend.text = element_text(size = 10),
-    axis.text.x = element_text(
-      angle = 45,                   # Rotation à 45 degrés
-      #hjust = 1,                    # Alignement horizontal
-      vjust = 1                     # Alignement vertical
+    legend.box.just = "left"
+  )
+
+
+# Créer un dataframe unifié pour tous les événements
+all_events <- bind_rows(
+  infection_flamboyant %>% mutate(INFIBR = "Positif"),
+  inf_flamb_neg %>% mutate(INFIBR = "Négatif")
+) %>% 
+  mutate(
+    Type_evenement = case_when(
+      INFIBR_IC == "Infection" & INFIBR == "Positif" ~ "Infection positive",
+      INFIBR_IC == "Colonisation" & INFIBR == "Positif" ~ "Colonisation positive",
+      INFIBR_IC == "Infection" & INFIBR == "Négatif" ~ "Infection négative",
+      INFIBR_IC == "Colonisation" & INFIBR == "Négatif" ~ "Colonisation négative"
     )
-  ) 
+  )
 
-
-
+#MARCHE PAS DU TOUT: RAJOUTER ENTRER HOPTILA POUR VOIR SI SERVICE REA = ACQUISITION BACTERIE
 #Gros tableau résumé statistiques sur les données de sejour et de colonisation et d'infection par Entero, Ec et K-P par secteur---------------- 
-
-
-
-
 
 
 
