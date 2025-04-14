@@ -119,6 +119,7 @@ sejour <- sejour %>%
   mutate(
     REAENT = dmy(REAENT),
     FINDAT = dmy(FINDAT),
+    HOSENT=dmy(HOSENT),
     Duree = as.numeric(FINDAT - REAENT)
   )
 
@@ -154,6 +155,7 @@ sejour_flamboyant <- sejour %>%
   mutate(
     REAENT = dmy(REAENT),
     FINDAT = dmy(FINDAT),
+    HOSENT =dmy(HOSENT),
     Duree = as.numeric(FINDAT - REAENT)
   )
 
@@ -578,23 +580,23 @@ inf_flamb_neg <- infection %>%
 # Calcul de la date maximale APRÈS le filtrage
 max_date <- max(sejour_flamboyant$FINDAT, na.rm = TRUE) + days(7)
 
+
+sejour_flamboyant <- sejour %>%
+  filter(REASEC1=="Flamboyant")
 #graphe sur le secteur flamboyant----------------
-#probleme d'affichage des legendes a corriger
+#probleme d'affichage des legendes a corriger +
 ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
-  # Barre à gauche avec les ID patients
-  # geom_text(
-  #   aes(x = min(REAENT), label = SUBJID),
-  #   hjust = 1.1, 
-  #   size = 3, 
-  #   color = "black"
-  # ) +
-  
   # Lignes de durée de séjour
   geom_linerange(
-    aes(xmin = REAENT, xmax = FINDAT, color = PATSEX),
+    aes(xmin = HOSENT, xmax = FINDAT, color = PATSEX),
     linewidth = 1.5
   ) +
-  
+  #Marqueur d'entrée en service de réanimation
+  geom_point(
+    aes(x=REAENT,shape="Date d'entrée en service de réanimation"),
+    color="darkgreen",
+    size=3
+  )+
   # Infections bactériologiques
   geom_point(
     data = inf_flamb_neg,
@@ -641,12 +643,14 @@ ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
     labels = c("Oui", "Non")
   ) +
   scale_shape_manual(
-    name = "Résultats",
+    name = "Evenements",
     values = c(
+      "Date d'entrée en service de réanimation"=3,
       "Infection bactériologique négative" = 4,
       "Infection bactériologique positive" = 20
     ),
-    labels=c("Infection bactériologique négative",
+    labels=c("Date d'entrée en service de réanimation",
+             "Infection bactériologique négative",
              "Infection bactériologique positive")
   ) +
   
@@ -668,7 +672,7 @@ ggplot(sejour_flamboyant, aes(y = reorder(SUBJID, REAENT))) +
   )
 
 
-# Créer un dataframe unifié pour tous les événements
+# Créer un dataframe unifié pour tous les événements---------
 all_events <- bind_rows(
   infection_flamboyant %>% mutate(INFIBR = "Positif"),
   inf_flamb_neg %>% mutate(INFIBR = "Négatif")
@@ -682,7 +686,6 @@ all_events <- bind_rows(
     )
   )
 
-#MARCHE PAS DU TOUT: RAJOUTER ENTRER HOPTILA POUR VOIR SI SERVICE REA = ACQUISITION BACTERIE
 #Gros tableau résumé statistiques sur les données de sejour et de colonisation et d'infection par Entero, Ec et K-P par secteur---------------- 
 
 
